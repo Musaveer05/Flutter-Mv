@@ -51,36 +51,73 @@ void main() async {
 
     CleverTapPlugin.initializeInbox();
 
-    runApp(webApp());
+    runApp(WebApp());
   }
 }
 
-class webApp extends StatelessWidget {
-  const webApp({super.key});
+class WebApp extends StatelessWidget {
+  const WebApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'CleverTap Inbox Example',
+      theme: ThemeData(primarySwatch: Colors.blue),
       home: const InboxPage(),
     );
   }
 }
 
-class InboxPage extends StatelessWidget {
+class InboxPage extends StatefulWidget {
   const InboxPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  State<InboxPage> createState() => _InboxPageState();
+}
+
+class _InboxPageState extends State<InboxPage> {
+  Map<String, dynamic>? campaignPayload;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // ✅ Listener registered once
+    CleverTapPlugin.addKVDataChangeListener((kvData) {
+      print("📩 KV Data Changed: $kvData");
+      setState(() {
+        campaignPayload = kvData; // Store payload for UI
+      });
+    });
+  }
+
+  void _triggerInboxViewed() {
+    // ✅ This call will cause CleverTap to evaluate campaigns
     CleverTapPlugin.recordEvent("InboxPageViewed", {});
+    print("inbox viewed event recorded.");
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Inbox Example')),
       body: Center(
-        child: ElevatedButton(
-          onPressed: () {
-            CleverTapPlugin.showInbox({});
-          },
-          child: const Text('Show Inbox'),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            ElevatedButton(
+              onPressed: _triggerInboxViewed,
+              child: const Text('Record Event & Fetch Campaign'),
+            ),
+
+            const SizedBox(height: 20),
+
+            // Render payload if available
+            if (campaignPayload != null)
+              Text("Payload: $campaignPayload")
+            else
+              const Text("No campaign payload yet."),
+          ],
         ),
       ),
     );
@@ -167,20 +204,6 @@ class _MyHomePageState extends State<MyHomePage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: <Widget>[
-                  // TextFormField(
-                  //   decoration: const InputDecoration(labelText: 'Name'),
-                  //   onChanged: (value) => _name = value,
-                  //   validator: (value) =>
-                  //       value == null || value.isEmpty ? 'Enter name' : null,
-                  // ),
-                  // TextFormField(
-                  //   decoration: const InputDecoration(labelText: 'Email'),
-                  //   keyboardType: TextInputType.emailAddress,
-                  //   onChanged: (value) => _email = value,
-                  //   validator: (value) => value == null || !value.contains('@')
-                  //       ? 'Enter valid email'
-                  //       : null,
-                  // ),
                   TextFormField(
                     decoration: const InputDecoration(labelText: 'Identity'),
                     onChanged: (value) => _identity = value,
@@ -212,19 +235,6 @@ class _MyHomePageState extends State<MyHomePage> {
               },
               child: const Text('Login'),
             ),
-            // TextButton(
-            //   onPressed: () {
-            //     if (_formKey.currentState!.validate()) {
-            //       CleverTapPlugin.profileSet({
-            //         'Name': _name,
-            //         'Email': _email,
-            //         'Phone': _phone,
-            //       });
-            //       Navigator.of(context).pop();
-            //     }
-            //   },
-            //   child: const Text('Update'),
-            // ),
           ],
         );
       },
@@ -237,35 +247,6 @@ class _MyHomePageState extends State<MyHomePage> {
       debugPrint("🆔 CleverTap ID: $clevertapId");
     } catch (e) {
       debugPrint("❌ Error fetching CleverTap ID: $e");
-    }
-  }
-
-  Future<void> sendEventToCleverTap() async {
-    final url = Uri.parse("https://api.clevertap.com/1/upload");
-
-    final headers = {
-      'X-CleverTap-Account-Id': 'TEST-98R-65Z-6K7Z',
-      'X-CleverTap-Passcode': 'QYY-SED-OLEL',
-      'Content-Type': 'application/json',
-    };
-
-    final body = jsonEncode({
-      "d": [
-        {
-          "identity": "testdns", // use email or CleverTap ID or identity
-          "type": "event",
-          "evtName": "booking_fee_completed",
-          "evtData": {"tags": "atlanta"},
-        },
-      ],
-    });
-
-    final response = await http.post(url, headers: headers, body: body);
-
-    if (response.statusCode == 200) {
-      print("Event sent successfully: ${response.body}");
-    } else {
-      print("Failed to send event: ${response.statusCode} ${response.body}");
     }
   }
 
@@ -293,7 +274,9 @@ class _MyHomePageState extends State<MyHomePage> {
               child: const Text('App Inbox'),
             ),
             ElevatedButton(
-              onPressed: sendEventToCleverTap,
+              onPressed: () {
+                CleverTapPlugin.recordEvent("test_001", {"test_prop": "te1"});
+              },
               child: const Text('Raise a Event'),
             ),
 
