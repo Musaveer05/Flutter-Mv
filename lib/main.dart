@@ -241,6 +241,28 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
+  Future<void> _markFirstUnreadMessageAsRead() async {
+    try {
+      var messageList = await CleverTapPlugin.getUnreadInboxMessages();
+      if (messageList == null || messageList.isEmpty) {
+        debugPrint("📭 No unread messages found");
+        return;
+      }
+
+      print('This is message payload: ${jsonEncode(messageList[0])}');
+
+      Map<dynamic, dynamic> firstMessage = messageList[0];
+      String messageId = !kIsWeb ? firstMessage["id"] : firstMessage["_id"];
+
+      await CleverTapPlugin.markReadInboxMessageForId(messageId);
+      await CleverTapPlugin.pushInboxNotificationViewedEventForId(messageId);
+
+      debugPrint("✅ Marked message as read: $messageId");
+    } catch (e) {
+      debugPrint("❌ Error marking message as read: $e");
+    }
+  }
+
   void _fetchCleverTapId() async {
     try {
       String? clevertapId = await CleverTapPlugin.getCleverTapID();
@@ -267,6 +289,7 @@ class _MyHomePageState extends State<MyHomePage> {
               onPressed: () {
                 CleverTapPlugin.recordEvent("Charged", {});
                 if (!kIsWeb) {
+                  _markFirstUnreadMessageAsRead();
                   CleverTapPlugin.showInbox({});
                 }
                 // CleverTapPlugin.showInbox({});
