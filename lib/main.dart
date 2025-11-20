@@ -19,11 +19,12 @@ void main() async {
   }
 
   // to initialize Flutter Web SDK with your account ID and region
-  CleverTapPlugin.init("TEST-98R-65Z-6K7Z", "eu1");
   if (!kIsWeb) {
     // to initialize CleverTap for Android and iOS
     runApp(const MyApp());
   } else {
+    CleverTapPlugin.init("TEST-98R-65Z-6K7Z", "eu1");
+
     var pushData = {
       'titleText': 'Would you like to receive Push Notifications?',
       'bodyText':
@@ -83,12 +84,12 @@ class _InboxPageState extends State<InboxPage> {
     super.initState();
 
     // ✅ Listener registered once
-    CleverTapPlugin.addKVDataChangeListener((kvData) {
-      print("📩 KV Data Changed: $kvData");
-      setState(() {
-        campaignPayload = kvData; // Store payload for UI
-      });
-    });
+    // CleverTapPlugin.addKVDataChangeListener((kvData) {
+    //   print("📩 KV Data Changed: $kvData");
+    //   setState(() {
+    //     campaignPayload = kvData; // Store payload for UI
+    //   });
+    // });
   }
 
   void _triggerInboxViewed() {
@@ -155,6 +156,7 @@ class _MyHomePageState extends State<MyHomePage> {
   String _email = '';
   String _phone = '';
   String _identity = '';
+  // String _identity = '';
 
   // final CleverTapPlugin _clevertapPlugin = CleverTapPlugin();
 
@@ -163,7 +165,7 @@ class _MyHomePageState extends State<MyHomePage> {
     super.initState();
     CleverTapPlugin.setDebugLevel(3);
     _initializeCleverTap();
-    _fetchCleverTapId();
+    // _fetchCleverTapId();
   }
 
   void _initializeCleverTap() {
@@ -213,6 +215,10 @@ class _MyHomePageState extends State<MyHomePage> {
                     keyboardType: TextInputType.phone,
                     onChanged: (value) => _phone = value,
                   ),
+                  TextFormField(
+                    decoration: const InputDecoration(labelText: 'Email'),
+                    onChanged: (value) => _email = value,
+                  ),
                 ],
               ),
             ),
@@ -223,17 +229,80 @@ class _MyHomePageState extends State<MyHomePage> {
                 if (_formKey.currentState!.validate()) {
                   var dob = '2002-02-22';
                   CleverTapPlugin.onUserLogin({
-                    'Identity': _identity,
                     'Phone': _phone,
+                    'Identity': _identity,
+                    'Email': _email,
                     'dob': CleverTapPlugin.getCleverTapDate(
                       DateTime.parse(dob),
                     ),
                     'stuff': ['bags', 'shoes', 'hats'],
                   });
+                  setState(() {
+                    _name = '';
+                    _email = '';
+                    _phone = '';
+                    _identity = '';
+                  });
                   Navigator.of(context).pop();
                 }
               },
               child: const Text('Login'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void updateForm() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Update Form'),
+          content: Form(
+            key: _formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  TextFormField(
+                    decoration: const InputDecoration(labelText: 'Identity'),
+                    onChanged: (value) => _identity = value,
+                  ),
+                  TextFormField(
+                    decoration: const InputDecoration(labelText: 'Phone'),
+                    keyboardType: TextInputType.phone,
+                    onChanged: (value) => _phone = value,
+                  ),
+                  TextFormField(
+                    decoration: const InputDecoration(labelText: 'Email'),
+                    onChanged: (value) => _email = value,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                if (_formKey.currentState!.validate()) {
+                  CleverTapPlugin.profileSet({
+                    'Phone': _phone,
+                    'Identity': _identity,
+                    'Email': _email,
+                    'stuff': ['bags', 'shoes', 'hats'],
+                  });
+                  setState(() {
+                    _name = '';
+                    _email = '';
+                    _phone = '';
+                    _identity = '';
+                  });
+                  Navigator.of(context).pop();
+                }
+              },
+              child: const Text('Update'),
             ),
           ],
         );
@@ -263,14 +332,47 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  void _fetchCleverTapId() async {
-    try {
-      String? clevertapId = await CleverTapPlugin.getCleverTapID();
-      debugPrint("🆔 CleverTap ID: $clevertapId");
-    } catch (e) {
-      debugPrint("❌ Error fetching CleverTap ID: $e");
-    }
-  }
+  // void _fetchCleverTapId() async {
+  //   try {
+  //     String? clevertapId = await CleverTapPlugin.getCleverTapID();
+  //     debugPrint("🆔 CleverTap ID: $clevertapId");
+  //   } catch (e) {
+  //     debugPrint("❌ Error fetching CleverTap ID: $e");
+  //   }
+  // }
+
+  // Future<void> _sendCleverTapEvent() async {
+  //   final url = Uri.parse('https://eu1.api.clevertap.com/1/upload');
+
+  //   final headers = {
+  //     'X-CleverTap-Account-Id': 'TEST-98R-65Z-6K7Z',
+  //     'X-CleverTap-Passcode': 'QYY-SED-OLEL',
+  //     'Content-Type': 'application/json; charset=utf-8',
+  //   };
+
+  //   final body = jsonEncode({
+  //     "d": [
+  //       {
+  //         "objectId": "61bd74c14c724aa88346841ec47279e0",
+  //         "type": "event",
+  //         "evtName": "Store_Page",
+  //         "evtData": {},
+  //       },
+  //     ],
+  //   });
+
+  //   try {
+  //     final response = await http.post(url, headers: headers, body: body);
+  //     if (response.statusCode == 200) {
+  //       debugPrint('Event sent successfully!');
+  //     } else {
+  //       debugPrint('Failed to send event. Status: ${response.statusCode}');
+  //       debugPrint('Response: ${response.body}');
+  //     }
+  //   } catch (e) {
+  //     debugPrint('Error sending event: $e');
+  //   }
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -289,8 +391,8 @@ class _MyHomePageState extends State<MyHomePage> {
               onPressed: () {
                 CleverTapPlugin.recordEvent("Charged", {});
                 if (!kIsWeb) {
-                  _markFirstUnreadMessageAsRead();
                   CleverTapPlugin.showInbox({});
+                  // _markFirstUnreadMessageAsRead();
                 }
                 // CleverTapPlugin.showInbox({});
               },
@@ -298,7 +400,9 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
             ElevatedButton(
               onPressed: () {
-                CleverTapPlugin.recordEvent("test_001", {"test_prop": "te1"});
+                CleverTapPlugin.recordEvent("test_event_01", {
+                  "test_prop": "NM-PRC-98-STK-25-MAR-8-BLACK",
+                });
               },
               child: const Text('Raise a Event'),
             ),
@@ -310,6 +414,18 @@ class _MyHomePageState extends State<MyHomePage> {
                 });
               },
               child: const Text('Raise Store_Page Event'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                // _sendCleverTapEvent();
+              },
+              child: const Text('Raise Store_Page Event'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                updateForm();
+              },
+              child: const Text('update profile'),
             ),
           ],
         ),
