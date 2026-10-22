@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  CleverTapPlugin.enableDeviceNetworkInfoReporting(true);
 
   bool granted =
       await NotificationPermissionRequester.requestNotificationPermission();
@@ -18,41 +19,38 @@ void main() async {
     print("Permission not granted, notifications will not work.");
   }
 
-  // to initialize Flutter Web SDK with your account ID and region
-  if (!kIsWeb) {
-    // to initialize CleverTap for Android and iOS
-    runApp(const MyApp());
-  } else {
+  if (kIsWeb) {
+    // ✅ Web initialization
     CleverTapPlugin.init("TEST-98R-65Z-6K7Z", "eu1");
 
     var pushData = {
       'titleText': 'Would you like to receive Push Notifications?',
-      'bodyText':
-          'We promise to only send you relevant content and give you updates on your transactions',
+      'bodyText': 'We promise to only send you relevant content and updates',
       'okButtonText': 'Ok',
       'rejectButtonText': 'Cancel',
       'okButtonColor': '#F28046',
       'askAgainTimeInSeconds': 5,
       'serviceWorkerPath': '/firebase-messaging-sw.js',
     };
+
     CleverTapPlugin.enableWebPush(pushData);
 
-    var stuff = ["bags", "shoes"];
-    var profile = {
+    CleverTapPlugin.onUserLogin({
       'Name': 'Captain America',
       'Email': 'xykm.p@america.com',
-      'stuff': stuff,
-      'age': 50,
-    };
-    CleverTapPlugin.onUserLogin(profile);
+      'userType': 'Flutter Web User',
+    });
 
-    Future.delayed(Duration(seconds: 5), () {
+    Future.delayed(const Duration(seconds: 5), () {
       CleverTapPlugin.recordEvent("AppointmentBooked", {});
     });
 
     CleverTapPlugin.initializeInbox();
 
-    runApp(WebApp());
+    runApp(const WebApp());
+  } else {
+    // ✅ Mobile
+    runApp(const MyApp());
   }
 }
 
@@ -97,6 +95,13 @@ class _InboxPageState extends State<InboxPage> {
     CleverTapPlugin.recordEvent("InboxPageViewed", {});
     print("inbox viewed event recorded.");
   }
+
+  // void updateDiv() {
+  //   final div = html.document.getElementById('clevertap-container');
+  //   if (div != null) {
+  //     div.innerHtml = ""; // empty div (you wanted this)
+  //   }
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -157,13 +162,19 @@ class _MyHomePageState extends State<MyHomePage> {
   String _phone = '';
   String _identity = '';
   // String _identity = '';
+  late CleverTapPlugin _cleverTapPlugin;
 
   // final CleverTapPlugin _clevertapPlugin = CleverTapPlugin();
 
   @override
   void initState() {
     super.initState();
+
+    _cleverTapPlugin = CleverTapPlugin();
+
     CleverTapPlugin.setDebugLevel(3);
+    CleverTapPlugin.setOptOut(true);
+
     _initializeCleverTap();
     // _fetchCleverTapId();
   }
@@ -178,6 +189,60 @@ class _MyHomePageState extends State<MyHomePage> {
     CleverTapPlugin().setCleverTapInboxMessagesDidUpdateHandler(
       () => debugPrint("Inbox messages updated"),
     );
+
+    // _cleverTapPlugin.
+
+    _cleverTapPlugin.setCleverTapInAppNotificationButtonClickedHandler((data) {
+      debugPrint("🔥 In-App Button Clicked: $data");
+    });
+
+    _cleverTapPlugin.setCleverTapPushClickedPayloadReceivedHandler((data) {
+      debugPrint("📩 Push Clicked Payload: $data");
+    });
+
+    _cleverTapPlugin.setCleverTapInAppNotificationDismissedHandler(
+      inAppNotificationDismissed,
+    );
+  }
+
+  void inAppNotificationButtonClicked(
+    Map<dynamic, dynamic>? map,
+    int? buttonIndex,
+  ) {
+    print("🔥 inAppNotificationButtonClicked called");
+    print("Payload: $map");
+    print("Button Index: $buttonIndex");
+
+    if (map != null) {
+      final data = Map<String, dynamic>.from(map);
+      print("Button Text: ${data["buttonText"]}");
+    }
+  }
+
+  // void pushClickedPayloadReceived(Map<dynamic, dynamic>? data) {
+  //   print("📩 pushClickedPayloadReceived called");
+  //   print("Payload: $data");
+
+  //   if (data != null) {
+  //     final payload = Map<String, dynamic>.from(data);
+  //     print("Push Payload: $payload");
+  //   }
+  // }
+  void inAppNotificationDismissed(Map<String, dynamic> map) {
+    final extras = Map<String, dynamic>.from(
+      map['extras'] ?? {},
+    ); // dashboard key-values
+    final actionExtras = Map<String, dynamic>.from(
+      map['actionExtras'] ?? {},
+    ); // null -> {}
+
+    print(
+      "inAppNotificationDismissed extras: $extras, actionExtras: $actionExtras",
+    );
+
+    if (actionExtras.isEmpty) {
+      // dismissed without an action (e.g. close button)
+    }
   }
 
   void inboxDidInitialize() {
@@ -227,8 +292,9 @@ class _MyHomePageState extends State<MyHomePage> {
             TextButton(
               onPressed: () {
                 if (_formKey.currentState!.validate()) {
-                  var dob = '2002-02-22';
+                  var dob = '2002-08-17';
                   CleverTapPlugin.onUserLogin({
+                    "Name": "John Check",
                     'Phone': _phone,
                     'Identity': _identity,
                     'Email': _email,
@@ -236,6 +302,11 @@ class _MyHomePageState extends State<MyHomePage> {
                       DateTime.parse(dob),
                     ),
                     'stuff': ['bags', 'shoes', 'hats'],
+                    'Plan type': 'Yes',
+                    'MSG-sms': true,
+                    'Language': 'en',
+                    'prop_method': 'OnUserLogin Called',
+                    "Tz": "Asia/Kathmandu",
                   });
                   setState(() {
                     _name = '';
@@ -247,6 +318,36 @@ class _MyHomePageState extends State<MyHomePage> {
                 }
               },
               child: const Text('Login'),
+            ),
+            TextButton(
+              onPressed: () {
+                if (_formKey.currentState!.validate()) {
+                  var dob = '2002-02-22';
+                  CleverTapPlugin.profileSet({
+                    "Name": "John Check",
+                    'Phone': _phone,
+                    'Identity': _identity,
+                    'Email': _email,
+                    'dob': CleverTapPlugin.getCleverTapDate(
+                      DateTime.parse(dob),
+                    ),
+                    'content_saved_to_watch_later_ids': '56481',
+                    // 'stuff': ['8180'],
+                    'Plan type': 'Yes',
+                    'MSG-sms': true,
+                    'Language': 'en',
+                    'prop_method': 'profile_update',
+                  });
+                  setState(() {
+                    _name = '';
+                    _email = '';
+                    _phone = '';
+                    _identity = '';
+                  });
+                  Navigator.of(context).pop();
+                }
+              },
+              child: const Text('Profile Update'),
             ),
           ],
         );
@@ -389,7 +490,12 @@ class _MyHomePageState extends State<MyHomePage> {
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
-                CleverTapPlugin.recordEvent("Charged", {});
+                CleverTapPlugin.recordEvent("Video Watched", {
+                  "video_id": 300,
+                  "video_name": "Credit card",
+                  "Charged ID": "12345",
+                });
+
                 if (!kIsWeb) {
                   CleverTapPlugin.showInbox({});
                   // _markFirstUnreadMessageAsRead();
@@ -400,9 +506,24 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
             ElevatedButton(
               onPressed: () {
-                CleverTapPlugin.recordEvent("test_event_01", {
-                  "test_prop": "NM-PRC-98-STK-25-MAR-8-BLACK",
+                // CleverTapPlugin.recordEvent("pagescreen_view", {
+                //   "pagescreen_name": "service_home_page",
+                // });
+
+                // DateTime date = DateTime(2026, 3, 14, 4, 45);
+
+                // CleverTapPlugin.recordEvent("Child eSIM Activated", {
+                //   "date": "\$D_1773478500",
+                // });
+                Future.delayed(const Duration(seconds: 4), () {
+                  CleverTapPlugin.recordEvent("Child eSIM Activated", {
+                    "date": "\$D_1773478500",
+                  });
                 });
+
+                // CleverTapPlugin.recordEvent("pagescreen_view", {
+                //   "pagescreen_name": "home_page",
+                // });
               },
               child: const Text('Raise a Event'),
             ),

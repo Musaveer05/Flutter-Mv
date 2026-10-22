@@ -45,7 +45,8 @@ dependencies {
     implementation("androidx.core:core:1.3.0");
     implementation("androidx.fragment:fragment:1.3.6");
 
-    implementation("com.clevertap.android:push-templates:2.0.0");
+    implementation("com.clevertap.android:push-templates:2.6.0");
+    // implementation "com.clevertap.android:clevertap-android-sdk:8.4.1"
 
     // MANDATORY for App Inbox
     implementation("androidx.appcompat:appcompat:1.3.1");
@@ -63,6 +64,9 @@ dependencies {
     implementation("androidx.media3:media3-ui:1.1.1");
 
     // (keep any other existing dependencies too)
+    // this is for App rating
+    implementation("com.google.android.play:review:2.0.2");
+
 
 }
 
